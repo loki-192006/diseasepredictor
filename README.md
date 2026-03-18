@@ -294,3 +294,6 @@ MIT License — Free for educational and personal use.
 ---
 
 *Built with ❤️ using Spring Boot + MySQL + Vanilla JS*
+=======
+# diseasepredictor
+>>>>>>> 547149f9b437ef619d8746afd381a83287347955
