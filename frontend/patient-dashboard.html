@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<!-- NAVBAR -->
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">
+    <div class="brand-icon">🩺</div>MediPredict
+  </a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Patient</div>
+    <a href="patient-dashboard.html" class="sidebar-link active"><span class="icon">🏠</span> Dashboard</a>
+    <a href="symptoms.html"          class="sidebar-link"><span class="icon">🩺</span> Check Symptoms</a>
+    <a href="history.html"           class="sidebar-link"><span class="icon">📋</span> My History</a>
+    <a href="profile.html"           class="sidebar-link"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <div class="page-header">
+      <h1 id="welcome-heading">Good morning! 👋</h1>
+      <p>Here's an overview of your health activity on MediPredict.</p>
+    </div>
+
+    <!-- STAT CARDS -->
+    <div class="card-grid card-grid-4" style="margin-bottom:2rem;">
+      <div class="stat-card">
+        <div class="stat-icon teal">📊</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-total">—</div>
+          <div class="stat-label">Total Predictions</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon coral">⚠️</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-high">—</div>
+          <div class="stat-label">High/Critical Cases</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-low">—</div>
+          <div class="stat-label">Low Severity Cases</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">🧬</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-last">—</div>
+          <div class="stat-label">Last Prediction</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid card-grid-2" style="margin-bottom:2rem;">
+      <!-- Quick Actions -->
+      <div class="card">
+        <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1.2rem;">⚡ Quick Actions</h3>
+        <div style="display:flex;flex-direction:column;gap:.75rem;">
+          <a href="symptoms.html" class="btn btn-primary btn-full">
+            🩺 Start New Prediction
+          </a>
+          <a href="history.html" class="btn btn-secondary btn-full">
+            📋 View Full History
+          </a>
+          <a href="profile.html" class="btn btn-secondary btn-full">
+            👤 Update My Profile
+          </a>
+        </div>
+      </div>
+
+      <!-- Profile Summary -->
+      <div class="card">
+        <h3 style="font-size:1.05rem;font-weight:700;margin-bottom:1.2rem;">👤 Profile Summary</h3>
+        <div id="profile-summary" style="display:flex;flex-direction:column;gap:.6rem;">
+          <div style="color:var(--slate);font-size:.9rem;">Loading profile…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Predictions -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <h3 style="font-size:1.05rem;font-weight:700;">📋 Recent Predictions</h3>
+        <a href="history.html" class="btn btn-secondary btn-sm">View All</a>
+      </div>
+      <div id="recent-predictions">
+        <div style="text-align:center;padding:2rem;color:var(--slate);">
+          <div style="font-size:2.5rem;margin-bottom:.75rem;">🔬</div>
+          <p>No predictions yet. <a href="symptoms.html" style="color:var(--teal);font-weight:600;">Check your symptoms now →</a></p>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('PATIENT')) return;
+    buildNavUser();
+
+    const user = Auth.getUser();
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    document.getElementById('welcome-heading').textContent = `${greeting}, ${user.fullName.split(' ')[0]}! 👋`;
+
+    try {
+      const [profileRes, historyRes] = await Promise.all([api.getPatientProfile(), api.getHistory()]);
+      const profile = profileRes.data;
+      const history = historyRes.data;
+
+      // Stats
+      const total   = history.length;
+      const highCount = history.filter(h => h.severity === 'HIGH' || h.severity === 'CRITICAL').length;
+      const lowCount  = history.filter(h => h.severity === 'LOW').length;
+
+      countUp(document.getElementById('stat-total'), total);
+      countUp(document.getElementById('stat-high'),  highCount);
+      countUp(document.getElementById('stat-low'),   lowCount);
+      document.getElementById('stat-last').textContent = total > 0
+        ? new Date(history[0].predictedAt).toLocaleDateString('en-IN', {day:'2-digit',month:'short'})
+        : 'Never';
+
+      // Profile summary
+      const ps = document.getElementById('profile-summary');
+      const row = (label, val) => `
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:.4rem 0;">
+          <span style="color:var(--slate);font-size:.88rem;">${label}</span>
+          <span style="font-weight:600;font-size:.88rem;">${val || '—'}</span>
+        </div>`;
+      ps.innerHTML =
+        row('Blood Group', profile.bloodGroup) +
+        row('Gender',      profile.gender) +
+        row('Date of Birth', profile.dateOfBirth
+          ? new Date(profile.dateOfBirth).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})
+          : null) +
+        row('Phone', profile.phone) +
+        `<a href="profile.html" style="color:var(--teal);font-size:.88rem;font-weight:600;margin-top:.5rem;display:inline-block;">Edit Profile →</a>`;
+
+      // Recent table
+      if (history.length > 0) {
+        const rows = history.slice(0, 5).map(h => `
+          <tr>
+            <td><strong>${h.predictedDisease}</strong></td>
+            <td>${severityBadge(h.severity)}</td>
+            <td>
+              <div class="progress-bar-wrap" style="width:100px;">
+                <div class="progress-bar-fill ${h.severity === 'HIGH' || h.severity === 'CRITICAL' ? 'high' : h.severity === 'MEDIUM' ? 'medium' : ''}"
+                     style="width:${h.confidenceScore}%"></div>
+              </div>
+              <span style="font-size:.8rem;color:var(--slate);">${h.confidenceScore}%</span>
+            </td>
+            <td style="font-size:.82rem;color:var(--slate);">${formatDate(h.predictedAt)}</td>
+          </tr>`).join('');
+
+        document.getElementById('recent-predictions').innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Disease</th><th>Severity</th><th>Confidence</th><th>Date</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+</script>
+</body>
+</html>

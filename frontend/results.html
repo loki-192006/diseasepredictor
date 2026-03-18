@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Prediction Results — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">
+    <div class="brand-icon">🩺</div>MediPredict
+  </a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Patient</div>
+    <a href="patient-dashboard.html" class="sidebar-link"><span class="icon">🏠</span> Dashboard</a>
+    <a href="symptoms.html"          class="sidebar-link"><span class="icon">🩺</span> Check Symptoms</a>
+    <a href="history.html"           class="sidebar-link active"><span class="icon">📋</span> My History</a>
+    <a href="profile.html"           class="sidebar-link"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div id="no-result" class="hidden" style="text-align:center;padding:4rem;">
+      <div style="font-size:3rem;">🔬</div>
+      <h2 style="font-family:var(--font-display);margin:.75rem 0 .5rem;">No Result Found</h2>
+      <p style="color:var(--slate);margin-bottom:1.5rem;">It looks like you haven't run a prediction yet.</p>
+      <a href="symptoms.html" class="btn btn-primary">Check Your Symptoms</a>
+    </div>
+
+    <div id="result-content" class="hidden">
+      <!-- Hero -->
+      <div class="result-hero">
+        <div class="result-hero-inner">
+          <div>
+            <div style="font-size:.82rem;opacity:.75;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.4rem;">
+              Primary Diagnosis
+            </div>
+            <div class="disease-name" id="res-disease">—</div>
+            <div style="margin-top:.75rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;">
+              <span id="res-severity-badge"></span>
+              <span style="font-size:.85rem;opacity:.75;" id="res-date"></span>
+            </div>
+          </div>
+          <div class="confidence-ring">
+            <div class="pct" id="res-confidence">0%</div>
+            <div class="label">Confidence</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card-grid card-grid-2" style="margin-bottom:1.5rem;">
+        <!-- Advice -->
+        <div class="card">
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:.85rem;">💊 Medical Advice</h3>
+          <p id="res-advice" style="color:var(--slate);font-size:.92rem;line-height:1.7;"></p>
+          <div class="alert alert-warning" style="margin-top:1rem;font-size:.82rem;">
+            ⚠️ This is not a medical diagnosis. Please consult a qualified doctor.
+          </div>
+        </div>
+
+        <!-- Symptoms provided -->
+        <div class="card">
+          <h3 style="font-size:1rem;font-weight:700;margin-bottom:.85rem;">🩺 Symptoms You Reported</h3>
+          <div id="res-symptoms" class="selected-pills"></div>
+        </div>
+      </div>
+
+      <!-- All scores -->
+      <div class="card" style="margin-bottom:1.5rem;">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1rem;">📊 Disease Match Scores</h3>
+        <div id="res-scores"></div>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;">
+        <a href="symptoms.html" class="btn btn-primary">🔄 New Prediction</a>
+        <a href="history.html"  class="btn btn-secondary">📋 View History</a>
+        <a href="patient-dashboard.html" class="btn btn-secondary">🏠 Dashboard</a>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (!requireAuth('PATIENT')) return;
+    buildNavUser();
+
+    const raw = sessionStorage.getItem('dp_prediction');
+    if (!raw) {
+      document.getElementById('no-result').classList.remove('hidden');
+      return;
+    }
+
+    const result = JSON.parse(raw);
+    document.getElementById('result-content').classList.remove('hidden');
+
+    document.getElementById('res-disease').textContent    = result.predictedDisease;
+    document.getElementById('res-confidence').textContent = result.confidenceScore + '%';
+    document.getElementById('res-date').textContent       = formatDate(result.predictedAt);
+    document.getElementById('res-advice').textContent     = result.advice;
+
+    // Severity badge (white variant for dark bg)
+    const sev = result.severity;
+    const sevColors = { LOW:'#22c55e', MEDIUM:'#f59e0b', HIGH:'#f97316', CRITICAL:'#ef4444' };
+    document.getElementById('res-severity-badge').innerHTML =
+      `<span style="background:rgba(255,255,255,.18);color:var(--white);border-radius:999px;padding:.2rem .7rem;font-size:.78rem;font-weight:700;letter-spacing:.04em;">${sev}</span>`;
+
+    // Symptoms pills
+    const pillsEl = document.getElementById('res-symptoms');
+    pillsEl.innerHTML = result.symptomsProvided.map(s =>
+      `<span class="pill" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:var(--navy);">${s}</span>`
+    ).join('');
+    // Fix pill colors for white background context
+    pillsEl.querySelectorAll('.pill').forEach(p => {
+      p.style.background = 'var(--teal-light)';
+      p.style.border = 'none';
+      p.style.color = 'var(--teal-dark)';
+    });
+
+    // Disease scores
+    const scoresEl = document.getElementById('res-scores');
+    scoresEl.innerHTML = result.allResults.map((d, i) => {
+      const pct = Math.min(parseFloat(d.score), 100);
+      const isTop = i === 0;
+      return `
+        <div style="margin-bottom:1rem;padding:${isTop ? '1rem' : '.75rem'};
+             border-radius:var(--radius-sm);
+             background:${isTop ? 'var(--teal-light)' : 'var(--slate-light)'};
+             border:1px solid ${isTop ? 'var(--teal)' : 'var(--border)'};">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.5rem;">
+            <div>
+              <span style="font-weight:${isTop ? 700 : 600};font-size:${isTop ? '1rem' : '.92rem'};color:var(--navy);">
+                ${isTop ? '🏆 ' : ''}${d.diseaseName}
+              </span>
+              <span style="margin-left:.5rem;">${severityBadge(d.severity)}</span>
+            </div>
+            <span style="font-weight:700;color:${isTop ? 'var(--teal-dark)' : 'var(--slate)'};">
+              ${pct.toFixed(1)}%
+            </span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill ${d.severity === 'HIGH' || d.severity === 'CRITICAL' ? 'high' : d.severity === 'MEDIUM' ? 'medium' : ''}"
+                 style="width:${pct}%"></div>
+          </div>
+          ${d.description ? `<p style="font-size:.82rem;color:var(--slate);margin-top:.5rem;">${d.description}</p>` : ''}
+        </div>`;
+    }).join('');
+  });
+</script>
+</body>
+</html>

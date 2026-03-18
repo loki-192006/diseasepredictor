@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Register — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <a href="index.html" class="navbar-brand" style="margin-bottom:2.5rem;display:flex;">
+        <div class="brand-icon">🩺</div>
+        <span style="color:var(--white);font-size:1.4rem;">MediPredict</span>
+      </a>
+      <h1>Understand your symptoms. Take control of your health.</h1>
+      <p>Join MediPredict to get instant, AI-powered disease predictions with confidence scores backed by a weighted rule engine.</p>
+      <div class="auth-features">
+        <div class="auth-feature"><div class="auth-feature-icon">✅</div><span>Free to use — no credit card needed</span></div>
+        <div class="auth-feature"><div class="auth-feature-icon">🏥</div><span>Built for patients &amp; healthcare providers</span></div>
+        <div class="auth-feature"><div class="auth-feature-icon">📈</div><span>Track your health history over time</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="auth-right" style="width:520px;overflow-y:auto;padding:2rem 3rem;">
+    <div class="auth-form-wrap" style="max-width:420px;">
+      <h2>Create account</h2>
+      <p class="subtitle">Start predicting in under a minute</p>
+
+      <div id="error-alert" class="alert alert-error hidden"></div>
+      <div id="success-alert" class="alert alert-success hidden"></div>
+
+      <!-- Role toggle -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1.5rem;">
+        <button id="role-patient" class="btn btn-primary" onclick="setRole('PATIENT')">🧑 Patient</button>
+        <button id="role-doctor"  class="btn btn-secondary" onclick="setRole('DOCTOR')">👨‍⚕️ Doctor</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input id="fullName" class="form-control" type="text" placeholder="Dr. Priya Sharma" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input id="username" class="form-control" type="text" placeholder="priya_sharma" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone (optional)</label>
+          <input id="phone" class="form-control" type="tel" placeholder="9876543210" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input id="email" class="form-control" type="email" placeholder="priya@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input id="password" class="form-control" type="password" placeholder="Min 6 characters" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Institute Password <small style="color:var(--slate);">(required for doctors)</small></label>
+        <input id="institutePassword" class="form-control" type="password" placeholder="Institute access code" />
+      </div>
+
+      <button id="register-btn" class="btn btn-primary btn-full btn-lg" onclick="handleRegister()">
+        Create Account
+      </button>
+
+      <div class="auth-switch">
+        Already have an account? <a href="login.html">Sign in</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  redirectIfLoggedIn();
+  let selectedRole = 'PATIENT';
+
+  function setRole(role) {
+    selectedRole = role;
+    document.getElementById('role-patient').className = role === 'PATIENT' ? 'btn btn-primary' : 'btn btn-secondary';
+    document.getElementById('role-doctor').className  = role === 'DOCTOR'  ? 'btn btn-primary' : 'btn btn-secondary';
+  }
+
+  async function handleRegister() {
+    const fullName = document.getElementById('fullName').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const phone    = document.getElementById('phone').value.trim();
+    const errEl    = document.getElementById('error-alert');
+    const sucEl    = document.getElementById('success-alert');
+    const btn      = document.getElementById('register-btn');
+    const institutePassword = document.getElementById('institutePassword').value;
+
+    errEl.classList.add('hidden');
+    sucEl.classList.add('hidden');
+
+    if (!fullName || !username || !email || !password) {
+      errEl.textContent = 'Please fill in all required fields.';
+      errEl.classList.remove('hidden'); return;
+    }
+    if (password.length < 6) {
+      errEl.textContent = 'Password must be at least 6 characters.';
+      errEl.classList.remove('hidden'); return;
+    }
+    if (selectedRole === 'DOCTOR' && !institutePassword) {
+      errEl.textContent = 'Institute password is required for doctor accounts.';
+      errEl.classList.remove('hidden'); return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Creating account…';
+
+    try {
+      const res = await api.register({ fullName, username, email, password, phone, role: selectedRole, institutePassword });
+      Auth.setSession(res.data.token, {
+        id: res.data.id, username: res.data.username,
+        email: res.data.email, fullName: res.data.fullName, role: res.data.role,
+      });
+      sucEl.textContent = '✅ Account created! Redirecting…';
+      sucEl.classList.remove('hidden');
+      setTimeout(() => {
+        window.location.href = selectedRole === 'PATIENT'
+          ? 'patient-dashboard.html'
+          : 'doctor-dashboard.html';
+      }, 1000);
+    } catch (err) {
+      errEl.textContent = err.message || 'Registration failed. Please try again.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Create Account';
+    }
+  }
+</script>
+</body>
+</html>

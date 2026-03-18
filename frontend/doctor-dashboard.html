@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doctor Dashboard — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand"><div class="brand-icon">🩺</div>MediPredict</a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Doctor</div>
+    <a href="doctor-dashboard.html" class="sidebar-link active"><span class="icon">🏠</span> Dashboard</a>
+    <a href="doctor-patients.html"  class="sidebar-link"><span class="icon">👥</span> My Patients</a>
+    <a href="doctor-profile.html"   class="sidebar-link"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1 id="welcome-heading">Welcome, Doctor 👨‍⚕️</h1>
+      <p>Overview of your practice on MediPredict.</p>
+    </div>
+
+    <!-- Stats -->
+    <div class="card-grid card-grid-4" style="margin-bottom:2rem;">
+      <div class="stat-card">
+        <div class="stat-icon teal">👥</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-patients">—</div>
+          <div class="stat-label">Total Patients</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon coral">🔬</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-predictions">—</div>
+          <div class="stat-label">Total Predictions</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon purple">⚠️</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-critical">—</div>
+          <div class="stat-label">High/Critical Cases</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green">🏥</div>
+        <div class="stat-info">
+          <div class="stat-value" id="stat-hospital">—</div>
+          <div class="stat-label">Hospital</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-grid card-grid-2" style="margin-bottom:2rem;">
+      <!-- Doctor Profile Card -->
+      <div class="card">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.1rem;">👨‍⚕️ Your Profile</h3>
+        <div id="doctor-profile-summary" style="color:var(--slate);font-size:.9rem;">Loading…</div>
+        <a href="doctor-profile.html" class="btn btn-outline btn-sm" style="margin-top:1rem;">Edit Profile</a>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="card">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.1rem;">⚡ Quick Actions</h3>
+        <div style="display:flex;flex-direction:column;gap:.75rem;">
+          <a href="doctor-patients.html" class="btn btn-primary btn-full">👥 View All Patients</a>
+          <a href="doctor-profile.html"  class="btn btn-secondary btn-full">✏️ Update My Profile</a>
+        </div>
+        <div class="alert alert-info" style="margin-top:1.25rem;font-size:.85rem;">
+          🔒 As a doctor, you can view patient profiles and their full prediction history.
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent patients -->
+    <div class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+        <h3 style="font-size:1rem;font-weight:700;">👥 Recent Patients</h3>
+        <a href="doctor-patients.html" class="btn btn-secondary btn-sm">View All</a>
+      </div>
+      <div id="patients-preview"></div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('DOCTOR')) return;
+    buildNavUser();
+
+    const user = Auth.getUser();
+    document.getElementById('welcome-heading').textContent = `Welcome, ${user.fullName} 👨‍⚕️`;
+
+    try {
+      const [profileRes, patientsRes] = await Promise.all([
+        api.getDoctorProfile(), api.getAllPatients()
+      ]);
+      const profile  = profileRes.data;
+      const patients = patientsRes.data;
+
+      // Stats
+      const totalPredictions = patients.reduce((sum, p) => sum + (p.totalPredictions || 0), 0);
+      countUp(document.getElementById('stat-patients'),    patients.length);
+      countUp(document.getElementById('stat-predictions'), totalPredictions);
+      document.getElementById('stat-critical').textContent = '—';
+      document.getElementById('stat-hospital').textContent = profile.hospital
+        ? profile.hospital.split(' ').slice(0, 2).join(' ')
+        : '—';
+
+      // Profile summary
+      const ps = document.getElementById('doctor-profile-summary');
+      const row = (label, val) => `
+        <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding:.4rem 0;">
+          <span style="color:var(--slate);font-size:.85rem;">${label}</span>
+          <span style="font-weight:600;font-size:.85rem;">${val || '—'}</span>
+        </div>`;
+      ps.innerHTML =
+        row('Specialization', profile.specialization) +
+        row('Qualification',  profile.qualification)  +
+        row('Experience',     profile.experienceYrs ? profile.experienceYrs + ' years' : null) +
+        row('Hospital',       profile.hospital)        +
+        row('License No.',    profile.licenseNumber);
+
+      // Patients preview table
+      const previewEl = document.getElementById('patients-preview');
+      if (!patients.length) {
+        previewEl.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--slate);">No patients registered yet.</div>`;
+      } else {
+        const rows = patients.slice(0, 5).map(p => `
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:.75rem;">
+                <div class="avatar" style="background:var(--teal-light);color:var(--teal-dark);">
+                  ${p.fullName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <div style="font-weight:600;">${p.fullName}</div>
+                  <div style="font-size:.78rem;color:var(--slate);">${p.email}</div>
+                </div>
+              </div>
+            </td>
+            <td>${p.totalPredictions}</td>
+            <td>
+              <a href="doctor-patients.html?patient=${p.userId}" class="btn btn-secondary btn-sm">View History</a>
+            </td>
+          </tr>`).join('');
+        previewEl.innerHTML = `
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Patient</th><th>Predictions</th><th>Action</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>
+          </div>`;
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+</script>
+</body>
+</html>

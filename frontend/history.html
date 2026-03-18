@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My History — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand"><div class="brand-icon">🩺</div>MediPredict</a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Patient</div>
+    <a href="patient-dashboard.html" class="sidebar-link"><span class="icon">🏠</span> Dashboard</a>
+    <a href="symptoms.html"          class="sidebar-link"><span class="icon">🩺</span> Check Symptoms</a>
+    <a href="history.html"           class="sidebar-link active"><span class="icon">📋</span> My History</a>
+    <a href="profile.html"           class="sidebar-link"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem;">
+      <div>
+        <h1>📋 Prediction History</h1>
+        <p>All your past symptom checks and disease predictions.</p>
+      </div>
+      <a href="symptoms.html" class="btn btn-primary">+ New Prediction</a>
+    </div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;gap:.75rem;margin-bottom:1.5rem;flex-wrap:wrap;">
+      <select id="filter-severity" class="form-control" style="max-width:180px;" onchange="filterHistory()">
+        <option value="">All Severities</option>
+        <option value="LOW">Low</option>
+        <option value="MEDIUM">Medium</option>
+        <option value="HIGH">High</option>
+        <option value="CRITICAL">Critical</option>
+      </select>
+      <input type="text" id="filter-search" class="form-control" style="max-width:260px;"
+             placeholder="Search disease…" oninput="filterHistory()" />
+    </div>
+
+    <div id="history-container">
+      <div style="text-align:center;padding:3rem;color:var(--slate);">
+        <div class="spinner spinner-teal" style="width:32px;height:32px;margin:0 auto .75rem;"></div>
+        Loading history…
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let allHistory = [];
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('PATIENT')) return;
+    buildNavUser();
+    await loadHistory();
+  });
+
+  async function loadHistory() {
+    try {
+      const res = await api.getHistory();
+      allHistory = res.data;
+      renderHistory(allHistory);
+    } catch (err) {
+      document.getElementById('history-container').innerHTML =
+        `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  function filterHistory() {
+    const sev  = document.getElementById('filter-severity').value;
+    const q    = document.getElementById('filter-search').value.toLowerCase();
+    let filtered = allHistory;
+    if (sev) filtered = filtered.filter(h => h.severity === sev);
+    if (q)   filtered = filtered.filter(h => h.predictedDisease.toLowerCase().includes(q));
+    renderHistory(filtered);
+  }
+
+  function renderHistory(history) {
+    const container = document.getElementById('history-container');
+
+    if (!history.length) {
+      container.innerHTML = `
+        <div style="text-align:center;padding:4rem;">
+          <div style="font-size:3rem;margin-bottom:.75rem;">🔬</div>
+          <h3 style="font-family:var(--font-display);margin-bottom:.5rem;">No predictions found</h3>
+          <p style="color:var(--slate);margin-bottom:1.5rem;">
+            ${allHistory.length === 0 ? "You haven't made any predictions yet." : "No results match your filter."}
+          </p>
+          <a href="symptoms.html" class="btn btn-primary">Start Your First Prediction</a>
+        </div>`;
+      return;
+    }
+
+    container.innerHTML = history.map(h => `
+      <div class="card" style="margin-bottom:1rem;">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem;">
+              <span style="font-size:1.05rem;font-weight:700;color:var(--navy);">${h.predictedDisease}</span>
+              ${severityBadge(h.severity)}
+              <span style="font-size:.82rem;color:var(--slate);">${formatDate(h.predictedAt)}</span>
+            </div>
+            <div style="margin-bottom:.75rem;">
+              <div style="display:flex;align-items:center;gap:.75rem;">
+                <div class="progress-bar-wrap" style="width:180px;">
+                  <div class="progress-bar-fill ${h.severity==='HIGH'||h.severity==='CRITICAL'?'high':h.severity==='MEDIUM'?'medium':''}"
+                       style="width:${h.confidenceScore}%"></div>
+                </div>
+                <span style="font-weight:700;font-size:.9rem;color:var(--navy);">${h.confidenceScore}%</span>
+                <span style="font-size:.8rem;color:var(--slate);">confidence</span>
+              </div>
+            </div>
+            <div>
+              <span style="font-size:.8rem;font-weight:600;color:var(--slate);text-transform:uppercase;letter-spacing:.04em;">Symptoms: </span>
+              <span style="font-size:.85rem;color:var(--navy-soft);">${h.symptomsProvided.join(' · ')}</span>
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <span style="font-size:.75rem;color:var(--slate);">ID #${h.id}</span>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+</script>
+</body>
+</html>

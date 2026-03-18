@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand"><div class="brand-icon">🩺</div>MediPredict</a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Patient</div>
+    <a href="patient-dashboard.html" class="sidebar-link"><span class="icon">🏠</span> Dashboard</a>
+    <a href="symptoms.html"          class="sidebar-link"><span class="icon">🩺</span> Check Symptoms</a>
+    <a href="history.html"           class="sidebar-link"><span class="icon">📋</span> My History</a>
+    <a href="profile.html"           class="sidebar-link active"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>👤 My Profile</h1>
+      <p>Manage your personal and medical information.</p>
+    </div>
+
+    <div id="doctor-prescription-card" class="card hidden" style="margin-bottom:1rem;">
+      <h3 style="font-size:1rem;font-weight:700;">🩺 Latest Doctor Note</h3>
+      <p id="prescription-text" style="margin:.25rem 0 .45rem; color:var(--slate);"></p>
+      <p id="next-visit-text" style="margin:0;color:var(--navy);font-weight:600;"></p>
+    </div>
+
+    <div id="alert-area"></div
+
+    <div class="card-grid card-grid-2">
+      <!-- Profile Header Card -->
+      <div class="card" style="grid-column:1/-1;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+        <div id="profile-avatar" style="width:80px;height:80px;border-radius:50%;background:var(--teal-light);color:var(--teal-dark);display:flex;align-items:center;justify-content:center;font-size:2rem;font-weight:700;flex-shrink:0;">—</div>
+        <div style="flex:1;">
+          <div id="profile-name" style="font-family:var(--font-display);font-size:1.5rem;color:var(--navy);">Loading…</div>
+          <div id="profile-email" style="color:var(--slate);font-size:.92rem;margin-top:.2rem;"></div>
+          <div style="margin-top:.5rem;display:flex;gap:.5rem;flex-wrap:wrap;">
+            <span id="profile-blood" class="badge badge-teal" style="display:none;"></span>
+            <span id="profile-gender" class="badge" style="background:var(--slate-light);color:var(--navy-soft);display:none;"></span>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--navy);" id="stat-predictions">—</div>
+          <div style="font-size:.8rem;color:var(--slate);">Total Predictions</div>
+        </div>
+      </div>
+
+      <!-- Personal Info -->
+      <div class="card">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">📋 Personal Information</h3>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input id="fullName" class="form-control" type="text" placeholder="Your full name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input id="phone" class="form-control" type="tel" placeholder="Phone number" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Date of Birth</label>
+          <input id="dateOfBirth" class="form-control" type="date" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Gender</label>
+          <select id="gender" class="form-control">
+            <option value="">Select gender</option>
+            <option value="MALE">Male</option>
+            <option value="FEMALE">Female</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Blood Group</label>
+          <select id="bloodGroup" class="form-control">
+            <option value="">Select blood group</option>
+            <option>A+</option><option>A-</option>
+            <option>B+</option><option>B-</option>
+            <option>AB+</option><option>AB-</option>
+            <option>O+</option><option>O-</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Medical Info -->
+      <div class="card">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">🏥 Medical Information</h3>
+        <div class="form-group">
+          <label class="form-label">Address</label>
+          <textarea id="address" class="form-control" rows="2" placeholder="Your address"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Medical History</label>
+          <textarea id="medicalHistory" class="form-control" rows="3"
+            placeholder="e.g. Hypertension, Diabetes Type 2…"></textarea>
+          <div class="form-hint">List any existing medical conditions or past surgeries.</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Known Allergies</label>
+          <textarea id="allergies" class="form-control" rows="2"
+            placeholder="e.g. Penicillin, Peanuts, Dust…"></textarea>
+        </div>
+        <button class="btn btn-primary btn-full" id="save-btn" onclick="saveProfile()">
+          💾 Save Profile
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('PATIENT')) return;
+    buildNavUser();
+    await loadProfile();
+  });
+
+  async function loadProfile() {
+    try {
+      const res = await api.getPatientProfile();
+      const p   = res.data;
+
+      // Header
+      const initials = p.fullName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      document.getElementById('profile-avatar').textContent = initials;
+      document.getElementById('profile-name').textContent   = p.fullName;
+      document.getElementById('profile-email').textContent  = p.email;
+      document.getElementById('stat-predictions').textContent = p.totalPredictions;
+
+      if (p.bloodGroup) {
+        const bg = document.getElementById('profile-blood');
+        bg.textContent = '🩸 ' + p.bloodGroup;
+        bg.style.display = 'inline-block';
+      }
+      if (p.gender) {
+        const gEl = document.getElementById('profile-gender');
+        gEl.textContent = p.gender;
+        gEl.style.display = 'inline-block';
+      }
+
+      // Form fields
+      document.getElementById('fullName').value      = p.fullName      || '';
+      document.getElementById('phone').value         = p.phone         || '';
+      document.getElementById('dateOfBirth').value   = p.dateOfBirth   || '';
+      document.getElementById('gender').value        = p.gender        || '';
+      document.getElementById('bloodGroup').value    = p.bloodGroup    || '';
+      document.getElementById('address').value       = p.address       || '';
+      document.getElementById('medicalHistory').value = p.medicalHistory || '';
+      document.getElementById('allergies').value     = p.allergies     || '';
+
+      const doctorCard = document.getElementById('doctor-prescription-card');
+      if (p.prescription || p.nextVisitDate) {
+        document.getElementById('prescription-text').textContent = p.prescription
+          ? `📝 Prescription: ${p.prescription}`
+          : '📝 Prescription: not set by doctor yet.';
+        document.getElementById('next-visit-text').textContent = p.nextVisitDate
+          ? `📅 Next visit: ${new Date(p.nextVisitDate).toLocaleDateString()}`
+          : '📅 Next visit: not scheduled yet.';
+        doctorCard.classList.remove('hidden');
+      } else {
+        doctorCard.classList.add('hidden');
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function saveProfile() {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+
+    const alertArea = document.getElementById('alert-area');
+    alertArea.innerHTML = '';
+
+    try {
+      await api.updatePatientProfile({
+        fullName:      document.getElementById('fullName').value.trim(),
+        phone:         document.getElementById('phone').value.trim(),
+        dateOfBirth:   document.getElementById('dateOfBirth').value || null,
+        gender:        document.getElementById('gender').value || null,
+        bloodGroup:    document.getElementById('bloodGroup').value || null,
+        address:       document.getElementById('address').value.trim(),
+        medicalHistory: document.getElementById('medicalHistory').value.trim(),
+        allergies:     document.getElementById('allergies').value.trim(),
+      });
+
+      alertArea.innerHTML = `<div class="alert alert-success">✅ Profile updated successfully!</div>`;
+      await loadProfile();
+      showToast('Profile saved!', 'success');
+    } catch (err) {
+      alertArea.innerHTML = `<div class="alert alert-error">❌ ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '💾 Save Profile';
+    }
+  }
+</script>
+</body>
+</html>

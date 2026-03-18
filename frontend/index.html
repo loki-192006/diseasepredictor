@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediPredict — AI Disease Prediction</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .landing-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: rgba(15,23,42,.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      padding: 0 2rem; height: 68px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .landing-nav .brand { color: var(--white); }
+    .landing-stats {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 1.5rem; max-width: 600px; margin: 3rem auto 0;
+    }
+    .landing-stat { text-align: center; }
+    .landing-stat .num { font-family: var(--font-display); font-size: 2.4rem; color: var(--white); }
+    .landing-stat .lbl { font-size: .85rem; color: rgba(255,255,255,.6); margin-top: .2rem; }
+    .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2.5rem; }
+    .step-card { text-align: center; padding: 2rem 1.5rem; }
+    .step-num {
+      width: 48px; height: 48px; border-radius: 50%;
+      background: var(--teal); color: var(--white);
+      font-weight: 700; font-size: 1.15rem;
+      display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;
+    }
+    .step-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: .5rem; }
+    .step-card p  { font-size: .9rem; color: var(--slate); }
+    .diseases-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(175px, 1fr)); gap: .85rem; margin-top: 2rem; }
+    .disease-pill {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: .6rem 1rem;
+      display: flex; align-items: center; gap: .6rem;
+      font-size: .88rem; font-weight: 500; color: var(--navy-soft);
+      box-shadow: var(--shadow-sm);
+    }
+    .disease-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-low { background: var(--green); }
+    .dot-medium { background: var(--amber); }
+    .dot-high { background: var(--coral); }
+    .dot-critical { background: var(--red); }
+    .cta-section {
+      background: linear-gradient(135deg, var(--teal) 0%, var(--teal-dark) 100%);
+      padding: 5rem 2rem; text-align: center; color: var(--white);
+    }
+    .cta-section h2 { font-family: var(--font-display); font-size: 2.2rem; margin-bottom: 1rem; }
+    .cta-section p  { color: rgba(255,255,255,.8); font-size: 1.05rem; margin-bottom: 2rem; }
+    footer { background: var(--navy); color: rgba(255,255,255,.5); text-align: center; padding: 1.5rem; font-size: .85rem; }
+    @media (max-width: 768px) { .steps-grid, .landing-stats { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <!-- NAV -->
+  <nav class="landing-nav">
+    <div class="navbar-brand brand">
+      <div class="brand-icon">🩺</div>
+      MediPredict
+    </div>
+    <div class="navbar-links">
+      <a href="#features" class="nav-link" style="color:rgba(255,255,255,.7)">Features</a>
+      <a href="#how" class="nav-link" style="color:rgba(255,255,255,.7)">How It Works</a>
+      <a href="login.html" class="nav-link" style="color:rgba(255,255,255,.7)">Login</a>
+      <a href="register.html" class="nav-btn">Get Started</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="landing-hero" style="padding-top: 8rem;">
+    <div class="hero-badge">
+      <span>🔬</span> Rule-Based AI Engine · 13 Diseases · 30 Symptoms
+    </div>
+    <h1>Predict Disease from<br /><em style="color:#5eead4;font-style:normal;">Your Symptoms</em></h1>
+    <p>MediPredict uses a weighted rule-based engine to analyse your symptoms and provide instant disease predictions with confidence scores.</p>
+    <div class="hero-cta">
+      <a href="register.html" class="btn btn-primary btn-lg">Start Free Prediction</a>
+      <a href="login.html" class="btn btn-outline btn-lg" style="color:var(--white);border-color:rgba(255,255,255,.4);">Sign In</a>
+    </div>
+    <div class="landing-stats">
+      <div class="landing-stat"><div class="num">13</div><div class="lbl">Diseases Covered</div></div>
+      <div class="landing-stat"><div class="num">30</div><div class="lbl">Symptoms Mapped</div></div>
+      <div class="landing-stat"><div class="num">97%</div><div class="lbl">Max Confidence Score</div></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="landing-section" id="features" style="background:var(--white);">
+    <div style="max-width:1100px;margin:0 auto;">
+      <div class="section-label">What We Offer</div>
+      <h2 class="section-title">Everything you need for health insights</h2>
+      <div class="card-grid card-grid-3" style="margin-top:2.5rem;">
+        <div class="feature-card">
+          <div class="feature-icon">🧠</div>
+          <h3>Smart Prediction Engine</h3>
+          <p>Weighted symptom-to-disease mapping with normalised confidence scoring for accurate results.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔐</div>
+          <h3>Secure &amp; Private</h3>
+          <p>BCrypt password hashing, JWT tokens, and role-based access keep your data safe.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Prediction History</h3>
+          <p>Every prediction is stored in MySQL so you and your doctor can track trends over time.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">👨‍⚕️</div>
+          <h3>Doctor Dashboard</h3>
+          <p>Doctors can review all patient profiles and their full prediction histories in one place.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📋</div>
+          <h3>Severity Levels</h3>
+          <p>Each predicted disease is rated LOW → CRITICAL with personalised medical advice.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📱</div>
+          <h3>Fully Responsive</h3>
+          <p>Clean healthcare UI works beautifully across desktop, tablet, and mobile devices.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="landing-section" id="how">
+    <div style="max-width:900px;margin:0 auto;">
+      <div class="section-label">Process</div>
+      <h2 class="section-title">Get your prediction in 3 steps</h2>
+      <div class="steps-grid">
+        <div class="card step-card">
+          <div class="step-num">1</div>
+          <h3>Register &amp; Login</h3>
+          <p>Create a free patient account or log in as a doctor to access all features.</p>
+        </div>
+        <div class="card step-card">
+          <div class="step-num">2</div>
+          <h3>Select Symptoms</h3>
+          <p>Choose from 30 categorised symptoms that you are currently experiencing.</p>
+        </div>
+        <div class="card step-card">
+          <div class="step-num">3</div>
+          <h3>Get Results</h3>
+          <p>View your predicted disease, confidence score, severity and medical advice instantly.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DISEASES COVERED -->
+  <section class="landing-section" style="background:var(--white);">
+    <div style="max-width:1100px;margin:0 auto;">
+      <div class="section-label">Coverage</div>
+      <h2 class="section-title">Diseases we can identify</h2>
+      <div class="diseases-grid">
+        <div class="disease-pill"><span class="disease-dot dot-low"></span> Common Cold</div>
+        <div class="disease-pill"><span class="disease-dot dot-medium"></span> Influenza (Flu)</div>
+        <div class="disease-pill"><span class="disease-dot dot-high"></span> COVID-19</div>
+        <div class="disease-pill"><span class="disease-dot dot-high"></span> Pneumonia</div>
+        <div class="disease-pill"><span class="disease-dot dot-high"></span> Dengue Fever</div>
+        <div class="disease-pill"><span class="disease-dot dot-high"></span> Malaria</div>
+        <div class="disease-pill"><span class="disease-dot dot-high"></span> Typhoid</div>
+        <div class="disease-pill"><span class="disease-dot dot-low"></span> Allergic Rhinitis</div>
+        <div class="disease-pill"><span class="disease-dot dot-medium"></span> Gastroenteritis</div>
+        <div class="disease-pill"><span class="disease-dot dot-critical"></span> Hypertensive Crisis</div>
+        <div class="disease-pill"><span class="disease-dot dot-medium"></span> Migraine</div>
+        <div class="disease-pill"><span class="disease-dot dot-critical"></span> Tuberculosis</div>
+        <div class="disease-pill"><span class="disease-dot dot-medium"></span> Diabetes (Type 2)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <h2>Ready to check your symptoms?</h2>
+    <p>Create a free account and get your first disease prediction in under 2 minutes.</p>
+    <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;">
+      <a href="register.html" class="btn btn-lg" style="background:var(--white);color:var(--teal);font-weight:700;">Create Free Account</a>
+      <a href="login.html" class="btn btn-lg btn-outline" style="color:var(--white);border-color:rgba(255,255,255,.5);">Already have account</a>
+    </div>
+  </section>
+
+  <footer>
+    <p>© 2024 MediPredict · Built with Spring Boot + MySQL · For educational purposes only · Not a substitute for medical advice</p>
+  </footer>
+
+  <script src="js/api.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      if (Auth.isLoggedIn()) {
+        document.querySelector('.hero-cta').innerHTML = `
+          <a href="${Auth.isPatient() ? 'patient-dashboard.html' : 'doctor-dashboard.html'}" class="btn btn-primary btn-lg">Go to Dashboard</a>`;
+      }
+    });
+  </script>
+</body>
+</html>

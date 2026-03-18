@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doctor Profile — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand"><div class="brand-icon">🩺</div>MediPredict</a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Doctor</div>
+    <a href="doctor-dashboard.html" class="sidebar-link"><span class="icon">🏠</span> Dashboard</a>
+    <a href="doctor-patients.html"  class="sidebar-link"><span class="icon">👥</span> My Patients</a>
+    <a href="doctor-profile.html"   class="sidebar-link active"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>👤 Doctor Profile</h1>
+      <p>Manage your professional information and credentials.</p>
+    </div>
+
+    <div id="alert-area"></div>
+
+    <div class="card-grid card-grid-2">
+      <!-- Header card -->
+      <div class="card" style="grid-column:1/-1;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;">
+        <div id="profile-avatar"
+             style="width:80px;height:80px;border-radius:50%;background:var(--teal-light);
+                    color:var(--teal-dark);display:flex;align-items:center;justify-content:center;
+                    font-size:2rem;font-weight:700;flex-shrink:0;">—</div>
+        <div style="flex:1;">
+          <div id="profile-name"  style="font-family:var(--font-display);font-size:1.5rem;color:var(--navy);">Loading…</div>
+          <div id="profile-email" style="color:var(--slate);font-size:.92rem;margin-top:.2rem;"></div>
+          <div id="profile-spec"  style="color:var(--teal-dark);font-weight:600;font-size:.9rem;margin-top:.3rem;"></div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:1.4rem;font-weight:700;color:var(--navy);" id="stat-patients">—</div>
+          <div style="font-size:.8rem;color:var(--slate);">Total Patients</div>
+        </div>
+      </div>
+
+      <!-- Personal info -->
+      <div class="card">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">📋 Personal Information</h3>
+        <div class="form-group">
+          <label class="form-label">Full Name</label>
+          <input id="fullName" class="form-control" type="text" placeholder="Dr. Priya Sharma" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input id="phone" class="form-control" type="tel" placeholder="Phone number" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Hospital / Clinic</label>
+          <input id="hospital" class="form-control" type="text" placeholder="City Medical Center" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">License Number</label>
+          <input id="licenseNumber" class="form-control" type="text" placeholder="MCI-12345" />
+        </div>
+      </div>
+
+      <!-- Professional info -->
+      <div class="card">
+        <h3 style="font-size:1rem;font-weight:700;margin-bottom:1.25rem;">🏥 Professional Details</h3>
+        <div class="form-group">
+          <label class="form-label">Specialization</label>
+          <select id="specialization" class="form-control">
+            <option value="">Select specialization</option>
+            <option>General Medicine</option>
+            <option>Internal Medicine</option>
+            <option>Cardiology</option>
+            <option>Neurology</option>
+            <option>Pulmonology</option>
+            <option>Gastroenterology</option>
+            <option>Dermatology</option>
+            <option>Infectious Disease</option>
+            <option>Endocrinology</option>
+            <option>Pediatrics</option>
+            <option>Oncology</option>
+            <option>Orthopedics</option>
+            <option>Psychiatry</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Qualification</label>
+          <input id="qualification" class="form-control" type="text" placeholder="MBBS, MD, DNB…" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Years of Experience</label>
+          <input id="experienceYrs" class="form-control" type="number" min="0" max="60" placeholder="10" />
+        </div>
+        <button class="btn btn-primary btn-full" id="save-btn" onclick="saveProfile()">
+          💾 Save Profile
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('DOCTOR')) return;
+    buildNavUser();
+    await loadProfile();
+  });
+
+  async function loadProfile() {
+    try {
+      const res = await api.getDoctorProfile();
+      const p   = res.data;
+
+      const initials = p.fullName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+      document.getElementById('profile-avatar').textContent  = initials;
+      document.getElementById('profile-name').textContent    = p.fullName;
+      document.getElementById('profile-email').textContent   = p.email;
+      document.getElementById('profile-spec').textContent    = p.specialization ? '🏥 ' + p.specialization : '';
+      document.getElementById('stat-patients').textContent   = p.totalPatients;
+
+      document.getElementById('fullName').value      = p.fullName      || '';
+      document.getElementById('phone').value         = p.phone         || '';
+      document.getElementById('hospital').value      = p.hospital      || '';
+      document.getElementById('licenseNumber').value = p.licenseNumber || '';
+      document.getElementById('specialization').value = p.specialization || '';
+      document.getElementById('qualification').value = p.qualification  || '';
+      document.getElementById('experienceYrs').value = p.experienceYrs != null ? p.experienceYrs : '';
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function saveProfile() {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Saving…';
+    document.getElementById('alert-area').innerHTML = '';
+
+    try {
+      await api.updateDoctorProfile({
+        fullName:       document.getElementById('fullName').value.trim(),
+        phone:          document.getElementById('phone').value.trim(),
+        hospital:       document.getElementById('hospital').value.trim(),
+        licenseNumber:  document.getElementById('licenseNumber').value.trim(),
+        specialization: document.getElementById('specialization').value,
+        qualification:  document.getElementById('qualification').value.trim(),
+        experienceYrs:  parseInt(document.getElementById('experienceYrs').value) || 0,
+      });
+      document.getElementById('alert-area').innerHTML =
+        `<div class="alert alert-success">✅ Profile updated successfully!</div>`;
+      await loadProfile();
+      showToast('Profile saved!', 'success');
+    } catch (err) {
+      document.getElementById('alert-area').innerHTML =
+        `<div class="alert alert-error">❌ ${err.message}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '💾 Save Profile';
+    }
+  }
+</script>
+</body>
+</html>

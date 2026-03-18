@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patients — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand"><div class="brand-icon">🩺</div>MediPredict</a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Doctor</div>
+    <a href="doctor-dashboard.html" class="sidebar-link"><span class="icon">🏠</span> Dashboard</a>
+    <a href="doctor-patients.html"  class="sidebar-link active"><span class="icon">👥</span> My Patients</a>
+    <a href="doctor-profile.html"   class="sidebar-link"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>👥 Patient Management</h1>
+      <p>Review all registered patients and their prediction histories.</p>
+    </div>
+
+    <!-- Search -->
+    <div style="margin-bottom:1.5rem;">
+      <input type="text" id="patient-search" class="form-control" style="max-width:320px;"
+             placeholder="🔍 Search patients…" oninput="filterPatients()" />
+    </div>
+
+    <!-- Patients list -->
+    <div id="patients-list">
+      <div style="text-align:center;padding:3rem;color:var(--slate);">
+        <div class="spinner spinner-teal" style="width:32px;height:32px;margin:0 auto .75rem;"></div>
+        Loading patients…
+      </div>
+    </div>
+
+    <!-- Patient history modal area -->
+    <div id="patient-history-section" class="hidden" style="margin-top:2rem;">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+          <h3 style="font-size:1rem;font-weight:700;" id="history-title">Patient History</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeHistory()">✕ Close</button>
+        </div>
+        <div id="patient-history-content"></div>
+      </div>
+    </div>
+
+    <div id="patient-edit-section" class="hidden" style="margin-top:2rem;">
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+          <h3 style="font-size:1rem;font-weight:700;" id="edit-title">Edit Patient</h3>
+          <button class="btn btn-secondary btn-sm" onclick="closeEdit()">✕ Close</button>
+        </div>
+        <div id="patient-edit-content"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let allPatients = [];
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('DOCTOR')) return;
+    buildNavUser();
+    await loadPatients();
+
+    // Auto-open patient if URL param set
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get('patient');
+    if (patientId) viewHistory(patientId, 'Patient');
+  });
+
+  async function loadPatients() {
+    try {
+      const res = await api.getAllPatients();
+      allPatients = res.data;
+      renderPatients(allPatients);
+    } catch (err) {
+      document.getElementById('patients-list').innerHTML =
+        `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  function filterPatients() {
+    const q = document.getElementById('patient-search').value.toLowerCase();
+    renderPatients(q
+      ? allPatients.filter(p => p.fullName.toLowerCase().includes(q) || p.email.toLowerCase().includes(q))
+      : allPatients);
+  }
+
+  function renderPatients(patients) {
+    const el = document.getElementById('patients-list');
+    if (!patients.length) {
+      el.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--slate);">No patients found.</div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Predictions</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${patients.map(p => `
+                <tr>
+                  <td>
+                    <div style="display:flex;align-items:center;gap:.75rem;">
+                      <div class="avatar" style="background:var(--teal-light);color:var(--teal-dark);">
+                        ${(p.fullName||'?').split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase()}
+                      </div>
+                      <span style="font-weight:600;">${p.fullName}</span>
+                    </div>
+                  </td>
+                  <td style="font-size:.88rem;color:var(--slate);">${p.email}</td>
+                  <td style="font-size:.88rem;">${p.phone || '—'}</td>
+                  <td>
+                    <span class="badge badge-teal">${p.totalPredictions} checks</span>
+                  </td>
+                  <td style="display:flex;gap:.35rem;flex-wrap:wrap;">
+                    <button class="btn btn-primary btn-sm"
+                      onclick="viewHistory(${p.userId}, '${p.fullName}')">
+                      📋 View History
+                    </button>
+                    <button class="btn btn-secondary btn-sm"
+                      onclick="openEditPatient(${p.userId})">
+                      ✏️ Edit
+                    </button>
+                  </td>
+                </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+  }
+
+  async function viewHistory(patientId, patientName) {
+    const section = document.getElementById('patient-history-section');
+    const content = document.getElementById('patient-history-content');
+    const title   = document.getElementById('history-title');
+
+    section.classList.remove('hidden');
+    title.textContent = `📋 ${patientName}'s Prediction History`;
+    content.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--slate);">
+      <div class="spinner spinner-teal" style="width:28px;height:28px;margin:0 auto .5rem;"></div>Loading…</div>`;
+
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    try {
+      const res = await api.getPatientHistory(patientId);
+      const history = res.data;
+
+      if (!history.length) {
+        content.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--slate);">
+          No predictions recorded for this patient yet.</div>`;
+        return;
+      }
+
+      content.innerHTML = history.map(h => `
+        <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:1rem;margin-bottom:.85rem;">
+          <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem;">
+            <span style="font-weight:700;color:var(--navy);">${h.predictedDisease}</span>
+            ${severityBadge(h.severity)}
+            <span style="font-size:.8rem;color:var(--slate);">${formatDate(h.predictedAt)}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;">
+            <div class="progress-bar-wrap" style="width:160px;">
+              <div class="progress-bar-fill ${h.severity==='HIGH'||h.severity==='CRITICAL'?'high':h.severity==='MEDIUM'?'medium':''}"
+                   style="width:${h.confidenceScore}%"></div>
+            </div>
+            <span style="font-weight:700;font-size:.88rem;">${h.confidenceScore}% confidence</span>
+          </div>
+          <div style="font-size:.82rem;color:var(--slate);">
+            <strong>Symptoms:</strong> ${h.symptomsProvided.join(', ')}
+          </div>
+        </div>`).join('');
+    } catch (err) {
+      content.innerHTML = `<div class="alert alert-error">${err.message}</div>`;
+    }
+  }
+
+  function closeHistory() {
+    document.getElementById('patient-history-section').classList.add('hidden');
+  }
+
+  async function openEditPatient(patientId) {
+    const section = document.getElementById('patient-edit-section');
+    const content = document.getElementById('patient-edit-content');
+    const title = document.getElementById('edit-title');
+    section.classList.remove('hidden');
+    title.textContent = '📝 Loading patient details...';
+    content.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--slate);">
+      <div class="spinner spinner-teal" style="width:28px;height:28px;margin:0 auto .5rem;"></div>Loading…</div>`;
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    try {
+      const res = await api.getPatientById(patientId);
+      const p = res.data;
+      title.textContent = `📝 Edit ${p.fullName}`;
+      content.innerHTML = `
+        <div class="form-row" style="gap: .6rem;">
+          <div class="form-group" style="flex:1"><label>Full Name</label><input id="edit-fullName" class="form-control" value="${p.fullName || ''}" /></div>
+          <div class="form-group" style="flex:1"><label>Phone</label><input id="edit-phone" class="form-control" value="${p.phone || ''}" /></div>
+        </div>
+        <div class="form-row" style="gap: .6rem;">
+          <div class="form-group" style="flex:1"><label>Blood Group</label><input id="edit-bloodGroup" class="form-control" value="${p.bloodGroup || ''}" /></div>
+          <div class="form-group" style="flex:1"><label>Gender</label><input id="edit-gender" class="form-control" value="${p.gender || ''}" /></div>
+        </div>
+        <div class="form-group"><label>Address</label><input id="edit-address" class="form-control" value="${p.address || ''}" /></div>
+        <div class="form-group"><label>Medical History</label><textarea id="edit-medicalHistory" class="form-control" rows="2">${p.medicalHistory || ''}</textarea></div>
+        <div class="form-group"><label>Allergies</label><textarea id="edit-allergies" class="form-control" rows="2">${p.allergies || ''}</textarea></div>
+        <div class="form-group"><label>Prescription</label><textarea id="edit-prescription" class="form-control" rows="2">${p.prescription || ''}</textarea></div>
+        <div class="form-group"><label>Next Visit Date</label><input id="edit-nextVisitDate" class="form-control" type="date" value="${p.nextVisitDate || ''}" /></div>
+        <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.65rem;">
+          <button class="btn btn-secondary btn-sm" onclick="closeEdit()">Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="savePatientDetails(${patientId})">Save changes</button>
+        </div>`;
+    } catch (err) {
+      section.classList.add('hidden');
+      showToast(err.message, 'error');
+    }
+  }
+
+  async function savePatientDetails(patientId) {
+    const data = {
+      fullName: document.getElementById('edit-fullName').value.trim(),
+      phone: document.getElementById('edit-phone').value.trim(),
+      bloodGroup: document.getElementById('edit-bloodGroup').value.trim(),
+      gender: document.getElementById('edit-gender').value.trim(),
+      address: document.getElementById('edit-address').value.trim(),
+      medicalHistory: document.getElementById('edit-medicalHistory').value.trim(),
+      allergies: document.getElementById('edit-allergies').value.trim(),
+      prescription: document.getElementById('edit-prescription').value.trim(),
+      nextVisitDate: document.getElementById('edit-nextVisitDate').value || null,
+    };
+    try {
+      const res = await api.updatePatientById(patientId, data);
+      showToast('Patient details updated', 'success');
+      document.getElementById('patient-edit-section').classList.add('hidden');
+      await loadPatients();
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  }
+
+  function closeEdit() {
+    document.getElementById('patient-edit-section').classList.add('hidden');
+  }

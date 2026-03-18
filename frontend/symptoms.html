@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Check Symptoms — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .sticky-bar {
+      position: sticky; top: 68px; z-index: 50;
+      background: var(--white);
+      border-bottom: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 1rem; flex-wrap: wrap;
+    }
+    .search-input-wrap { position: relative; flex: 1; max-width: 340px; }
+    .search-input-wrap input { padding-left: 2.5rem; }
+    .search-icon { position: absolute; left: .8rem; top: 50%; transform: translateY(-50%); color: var(--slate); }
+    #selected-count { font-weight: 700; color: var(--teal); }
+    .category-section { margin-bottom: 2rem; }
+  </style>
+</head>
+<body>
+<nav class="navbar">
+  <a href="index.html" class="navbar-brand">
+    <div class="brand-icon">🩺</div>MediPredict
+  </a>
+  <div id="nav-user"></div>
+</nav>
+
+<div class="sticky-bar">
+  <div>
+    <strong style="font-size:.95rem;">Select Your Symptoms</strong>
+    <span style="color:var(--slate);font-size:.85rem;margin-left:.5rem;">
+      (<span id="selected-count">0</span> selected)
+    </span>
+  </div>
+  <div class="search-input-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="text" class="form-control" id="search-input" placeholder="Search symptoms…" oninput="filterSymptoms()" />
+  </div>
+  <button id="predict-btn" class="btn btn-primary" onclick="runPrediction()" disabled>
+    🔬 Predict Disease
+  </button>
+</div>
+
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-section-label">Patient</div>
+    <a href="patient-dashboard.html" class="sidebar-link"><span class="icon">🏠</span> Dashboard</a>
+    <a href="symptoms.html"          class="sidebar-link active"><span class="icon">🩺</span> Check Symptoms</a>
+    <a href="history.html"           class="sidebar-link"><span class="icon">📋</span> My History</a>
+    <a href="profile.html"           class="sidebar-link"><span class="icon">👤</span> My Profile</a>
+    <div style="flex:1"></div>
+    <button class="sidebar-link" onclick="logout()" style="margin-top:auto;width:100%;color:var(--red);">
+      <span class="icon">🚪</span> Logout
+    </button>
+  </aside>
+
+  <main class="main-content">
+    <div class="page-header">
+      <h1>🩺 Symptom Checker</h1>
+      <p>Select all symptoms you are currently experiencing. Select at least 2 for best results.</p>
+    </div>
+
+    <!-- Selected pills -->
+    <div class="card" style="margin-bottom:1.5rem;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;">
+        <h3 style="font-size:.95rem;font-weight:700;">Selected Symptoms</h3>
+        <button class="btn btn-secondary btn-sm" onclick="clearAll()">Clear All</button>
+      </div>
+      <div id="selected-pills" class="selected-pills">
+        <span style="color:var(--slate);font-size:.88rem;">None selected yet — click symptoms below</span>
+      </div>
+    </div>
+
+    <!-- Symptom grid by category -->
+    <div id="symptoms-container">
+      <div style="text-align:center;padding:3rem;color:var(--slate);">
+        <div class="spinner spinner-teal" style="width:32px;height:32px;margin:0 auto .75rem;"></div>
+        Loading symptoms…
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Loading overlay for prediction -->
+<div id="predict-loader" class="page-loader hidden">
+  <div class="loader-inner">
+    <div class="loader-ring"></div>
+    <p style="color:var(--slate);font-size:.95rem;font-weight:600;">Analysing your symptoms…</p>
+    <p style="color:var(--slate);font-size:.82rem;margin-top:.25rem;">Running rule-based engine</p>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  let allSymptoms = [];
+  let selectedSymptoms = new Set();
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    if (!requireAuth('PATIENT')) return;
+    buildNavUser();
+    await loadSymptoms();
+  });
+
+  async function loadSymptoms() {
+    try {
+      const res = await api.getSymptoms();
+      allSymptoms = res.data;
+      renderSymptoms(allSymptoms);
+    } catch (err) {
+      document.getElementById('symptoms-container').innerHTML =
+        `<div class="alert alert-error">Failed to load symptoms: ${err.message}</div>`;
+    }
+  }
+
+  function renderSymptoms(symptoms) {
+    const container = document.getElementById('symptoms-container');
+    if (!symptoms.length) {
+      container.innerHTML = `<div style="text-align:center;padding:2rem;color:var(--slate);">No symptoms match your search.</div>`;
+      return;
+    }
+
+    // Group by category
+    const grouped = {};
+    symptoms.forEach(s => {
+      if (!grouped[s.category]) grouped[s.category] = [];
+      grouped[s.category].push(s);
+    });
+
+    container.innerHTML = Object.entries(grouped).map(([category, syms]) => `
+      <div class="category-section">
+        <div class="category-header">
+          ${categoryIcon(category)} ${category}
+        </div>
+        <div class="symptom-grid">
+          ${syms.map(s => `
+            <div class="symptom-chip ${selectedSymptoms.has(s.name) ? 'selected' : ''}"
+                 onclick="toggleSymptom('${s.name}')"
+                 data-name="${s.name}">
+              <div class="chip-check">${selectedSymptoms.has(s.name) ? '✓' : ''}</div>
+              ${s.name}
+            </div>`).join('')}
+        </div>
+      </div>`).join('');
+  }
+
+  function categoryIcon(cat) {
+    const icons = {
+      General: '🌡️', Respiratory: '🫁', Neurological: '🧠',
+      ENT: '👂', Musculoskeletal: '🦴', Gastrointestinal: '🫙',
+      Cardiovascular: '❤️', Dermatological: '🔴', Immunological: '🛡️',
+    };
+    return icons[cat] || '💊';
+  }
+
+  function toggleSymptom(name) {
+    if (selectedSymptoms.has(name)) selectedSymptoms.delete(name);
+    else selectedSymptoms.add(name);
+    updateUI();
+  }
+
+  function updateUI() {
+    // Update count
+    document.getElementById('selected-count').textContent = selectedSymptoms.size;
+
+    // Update predict button
+    document.getElementById('predict-btn').disabled = selectedSymptoms.size < 1;
+
+    // Update chips visual
+    document.querySelectorAll('.symptom-chip').forEach(chip => {
+      const name = chip.dataset.name;
+      const sel  = selectedSymptoms.has(name);
+      chip.classList.toggle('selected', sel);
+      chip.querySelector('.chip-check').textContent = sel ? '✓' : '';
+    });
+
+    // Update pills
+    const pillsEl = document.getElementById('selected-pills');
+    if (selectedSymptoms.size === 0) {
+      pillsEl.innerHTML = `<span style="color:var(--slate);font-size:.88rem;">None selected yet — click symptoms below</span>`;
+    } else {
+      pillsEl.innerHTML = [...selectedSymptoms].map(name => `
+        <span class="pill">
+          ${name}
+          <button class="pill-remove" onclick="toggleSymptom('${name}')">×</button>
+        </span>`).join('');
+    }
+  }
+
+  function clearAll() {
+    selectedSymptoms.clear();
+    updateUI();
+  }
+
+  function filterSymptoms() {
+    const q = document.getElementById('search-input').value.toLowerCase().trim();
+    if (!q) { renderSymptoms(allSymptoms); return; }
+    const filtered = allSymptoms.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+    renderSymptoms(filtered);
+  }
+
+  async function runPrediction() {
+    if (selectedSymptoms.size === 0) return;
+    document.getElementById('predict-loader').classList.remove('hidden');
+
+    try {
+      const res = await api.predict({ symptoms: [...selectedSymptoms] });
+      // Store result in sessionStorage for results page
+      sessionStorage.setItem('dp_prediction', JSON.stringify(res.data));
+      window.location.href = 'results.html';
+    } catch (err) {
+      document.getElementById('predict-loader').classList.add('hidden');
+      showToast(err.message, 'error');
+    }
+  }
+</script>
+</body>
+</html>

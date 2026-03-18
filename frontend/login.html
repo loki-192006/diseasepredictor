@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — MediPredict</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<div class="auth-page">
+  <!-- LEFT PANEL -->
+  <div class="auth-left">
+    <div class="auth-left-content">
+      <a href="index.html" class="navbar-brand" style="margin-bottom:2.5rem;display:flex;">
+        <div class="brand-icon">🩺</div>
+        <span style="color:var(--white);font-size:1.4rem;">MediPredict</span>
+      </a>
+      <h1>Your health insights, in seconds.</h1>
+      <p>Select your symptoms, and our rule-based AI engine maps them to potential diseases with confidence scores and medical advice.</p>
+      <div class="auth-features">
+        <div class="auth-feature"><div class="auth-feature-icon">🔒</div><span>Secured with BCrypt &amp; JWT</span></div>
+        <div class="auth-feature"><div class="auth-feature-icon">📊</div><span>Full prediction history</span></div>
+        <div class="auth-feature"><div class="auth-feature-icon">👨‍⚕️</div><span>Doctor &amp; patient dashboards</span></div>
+        <div class="auth-feature"><div class="auth-feature-icon">🧬</div><span>13 diseases · 30 symptoms</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="auth-right">
+    <div class="auth-form-wrap">
+      <h2>Welcome back</h2>
+      <p class="subtitle">Sign in to your MediPredict account</p>
+
+      <div id="error-alert" class="alert alert-error hidden"></div>
+
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input id="username" class="form-control" type="text" placeholder="Enter your username" autocomplete="username" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input id="password" class="form-control" type="password" placeholder="Enter your password" autocomplete="current-password" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="institutePassword">Institute Password (for doctors)</label>
+        <input id="institutePassword" class="form-control" type="password" placeholder="Institute access code" />
+      </div>
+
+      <button id="login-btn" class="btn btn-primary btn-full btn-lg" onclick="handleLogin()">
+        Sign In
+      </button>
+
+      <div class="auth-divider" style="margin-top:1.5rem;">or try a demo account</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-top:1rem;">
+        <button class="btn btn-secondary btn-full" onclick="demoLogin('patient1','password123')">
+          🧑 Patient Demo
+        </button>
+        <button class="btn btn-secondary btn-full" onclick="demoLogin('dr_sharma','password123')">
+          👨‍⚕️ Doctor Demo
+        </button>
+      </div>
+
+      <div class="auth-switch">
+        Don't have an account? <a href="register.html">Create one free</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script>
+  redirectIfLoggedIn();
+
+  async function handleLogin() {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const institutePassword = document.getElementById('institutePassword').value;
+    const btn      = document.getElementById('login-btn');
+    const errEl    = document.getElementById('error-alert');
+
+    errEl.classList.add('hidden');
+    if (!username || !password) {
+      errEl.textContent = 'Please enter username and password.';
+      errEl.classList.remove('hidden');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Signing in…';
+
+    try {
+      const res = await api.login({ username, password, institutePassword });
+      Auth.setSession(res.data.token, {
+        id: res.data.id, username: res.data.username,
+        email: res.data.email, fullName: res.data.fullName, role: res.data.role,
+      });
+      showToast('Login successful!', 'success');
+      setTimeout(() => {
+        window.location.href = res.data.role === 'PATIENT'
+          ? 'patient-dashboard.html'
+          : 'doctor-dashboard.html';
+      }, 500);
+    } catch (err) {
+      errEl.textContent = err.message || 'Login failed. Please check your credentials.';
+      errEl.classList.remove('hidden');
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+  }
+
+  function demoLogin(u, p) {
+    document.getElementById('username').value = u;
+    document.getElementById('password').value = p;
+    handleLogin();
+  }
+
+  // Enter key
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') handleLogin(); });
+</script>
+</body>
+</html>
